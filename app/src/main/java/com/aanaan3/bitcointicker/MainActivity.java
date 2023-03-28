@@ -11,16 +11,19 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import com.loopj.android.http.AsyncHttpClient;
-import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.JsonHttpResponseHandler;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import cz.msebera.android.httpclient.Header;
+
 
 public class MainActivity extends AppCompatActivity {
 
     // Constants:
     // TODO: Create the base URL
-    private final String BASE_URL = "https://apiv2.bitcoinaverage.com/indices/global/ticker/BTCUSD";
+    private final String BASE_URL = "https://apiv2.bitcoinaverage.com/indices/global/ticker/BTC";
 
     // Member Variables:
     TextView mPriceTextView;
@@ -48,7 +51,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
                 Log.d("Bitcoin", "" + adapterView.getItemAtPosition(i));
-                letsDoSomeNetworking(BASE_URL+"/"+adapterView.getItemAtPosition(i));
+                String finalUrl = BASE_URL+ adapterView.getItemAtPosition(i);
+                Log.d("Bitcoin", "finalUrl: " + finalUrl);
+                letsDoSomeNetworking(finalUrl);
             }
 
             @Override
@@ -63,25 +68,29 @@ public class MainActivity extends AppCompatActivity {
     private void letsDoSomeNetworking(String url) {
 
         AsyncHttpClient client = new AsyncHttpClient();
-        client.get(url, new AsyncHttpResponseHandler() {
+        client.get(url,new JsonHttpResponseHandler(){
             @Override
-            public void onStart() {
-                Log.d("Bitcoin", "Start");
+            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
+                super.onSuccess(statusCode, headers, response);
+                Log.d("Bitcoin", "onSuccess JSON:" + response.toString());
+
+                try {
+                    String price = response.getString("last");
+                    mPriceTextView.setText(price);
+                }catch (JSONException e){
+                    Log.d("Bitcoin", "onSuccess: "+e.toString());
+                }
+
+
             }
 
             @Override
-            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
-                Log.d("Bitcoin", "Success: "+statusCode);
-            }
+            public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
+                super.onFailure(statusCode, headers, throwable, errorResponse);
+                Log.e("Bitcoin", "onFailure: " + errorResponse.toString() );
+                Log.e("Bitcoin", "onFailure: " + throwable.toString() );
+                Log.d("Bitcoin", "Status code " + statusCode);
 
-            @Override
-            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-                Log.d("Bitcoin", "Failure: "+statusCode);
-            }
-
-            @Override
-            public void onRetry(int retryNo) {
-                Log.d("Bitcoin", "Retry: "+retryNo);
             }
         });
     }
